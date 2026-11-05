@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wedding Fund Trader 3.0</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0b1220;
+      color: #f8fafc;
+      font-family: Arial, sans-serif;
+    }
+    main { max-width: 1000px; margin: auto; }
+    h1 { color: #facc15; }
+    .subtitle { color: #94a3b8; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 24px 0;
+    }
+    .card {
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 20px;
+    }
+    .label { color: #94a3b8; }
+    .value {
+      font-size: 28px;
+      font-weight: bold;
+      margin-top: 12px;
+    }
+    .chart-container {
+      position: relative;
+      height: 320px;
+    }
+    footer {
+      color: #94a3b8;
+      margin-top: 24px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Wedding Fund Trader 3.0</h1>
+  <p class="subtitle">Virtueel beleggingsdashboard</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="label">Startkapitaal</div>
+      <div class="value">$500,00</div>
+    </div>
+    <div class="card">
+      <div class="label">Portefeuillewaarde</div>
+      <div class="value" id="total">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Beschikbaar saldo</div>
+      <div class="value" id="cash">--</div>
+    </div>
+    <div class="card">
+      <div class="label">Rendement</div>
+      <div class="value" id="return">--</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Ontwikkeling portefeuille</h2>
+    <div class="chart-container">
+      <canvas id="chart"></canvas>
+    </div>
+  </div>
+
+  <footer>
+    <p id="status">Gegevens laden...</p>
+    Alleen simulatie. Geen echte handelsorders.
+  </footer>
+</main>
+
+<script>
+  const usd = value => "$" + Number(value).toFixed(2);
+
+  async function loadDashboard() {
+    try {
+      const response = await fetch(
+        "./public_history.json?t=" + Date.now()
+      );
+      if (!response.ok) {
+        throw new Error("Openbare historie nog niet beschikbaar");
+      }
+
+      const history = await response.json();
+      if (!Array.isArray(history) || history.length === 0) {
+        throw new Error("Nog geen historische gegevens");
+      }
+
+      history.sort((a, b) => a.date.localeCompare(b.date));
+      const latest = history[history.length - 1];
+
+      document.getElementById("total").textContent =
+        usd(latest.total_value);
+      document.getElementById("cash").textContent =
+        usd(latest.cash);
+      document.getElementById("return").textContent =
+        Number(latest.return_pct).toFixed(2) + "%";
+
+      new Chart(document.getElementById("chart"), {
+        type: "line",
+        data: {
+          labels: history.map(item => item.date),
+          datasets: [{
+            label: "Portefeuillewaarde (USD)",
+            data: history.map(item => item.total_value),
+            borderColor: "#facc15",
+            backgroundColor: "rgba(250,204,21,0.12)",
+            fill: true,
+            tension: 0.25
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      });
+
+      document.getElementById("status").textContent =
+        "Laatste registratie: " + latest.date;
+    } catch (error) {
+      document.getElementById("status").textContent =
+        error.message;
+    }
+  }
+
+  loadDashboard();
+</script>
+</body>
+</html>
